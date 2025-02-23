@@ -12,7 +12,9 @@
   "dependencies": {
     "@grammyjs/hydrate": "^1.4.1",
     "dotenv": "^16.4.7",
+    "google-auth-library": "^9.15.1",
     "google-spreadsheet": "^4.1.4",
+    "googleapis": "^144.0.0",
     "grammy": "^1.35.0",
     "nodemon": "^3.1.9"
   }
