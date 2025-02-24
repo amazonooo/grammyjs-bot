@@ -22,7 +22,7 @@ const auth = new JWT({
 const sheets = google.sheets({ version: 'v4', auth });
 
 const spreadsheetId = '1pTBFi7KMRoVJ-1esqWGw66qMuTBUgSd4ZvotsA7mMB4'
-const range = 'Лист1!A:F'
+const range = 'Лист1!A:H'
 
 const bot = new Bot(process.env.BOT_API_KEY)
 bot.use(hydrate())
@@ -35,6 +35,9 @@ bot.api.setMyCommands([
 	{
 		command: 'start',
 		description: 'Запуск бота',
+	},
+	{
+		command: 'my_anket', description: 'Посмотреть свою анкету'
 	},
 	{
 		command: 'admin_panel',
@@ -56,6 +59,25 @@ bot.command('admin_panel', async ctx => {
 	}
 
 	return sendAdminPanel(ctx)
+})
+
+bot.command('my_anket', async (ctx) => {
+	await ctx.reply(
+		`📋 *Твоя анкета заполнена:*\n
+👤 Пол: ${ctx.session.gender === 'male' ? 'Мужской' : 'Женский'}
+💼 Род деятельности: ${
+			occupationMap[ctx.session.occupation] || ctx.session.occupation
+		}
+🎂 Возраст: ${ctx.session.age}
+📅 Опыт: ${experienceMap[ctx.session.experience] || ctx.session.occupation}
+💰 Текущий доход: ${
+			occupationMap[ctx.session.current_income] || ctx.session.current_income
+		}
+💸 Желаемый доход: ${
+			occupationMap[ctx.session.desired_income] || ctx.session.desired_income
+		}`,
+		{ parse_mode: 'Markdown' }
+	)
 })
 
 async function sendAdminPanel(ctx) {
@@ -114,48 +136,6 @@ bot.callbackQuery("view_surveys", async (ctx) => {
   }
 });
 
-// const fs = require("fs");
-// const { parse } = require("json2csv");
-
-// bot.callbackQuery("export_data", async (ctx) => {
-//   if (ctx.from.id !== adminId) {
-//     return ctx.answerCallbackQuery("⛔ У вас нет прав для этого.");
-//   }
-
-//   try {
-//     const response = await sheets.spreadsheets.values.get({
-//       spreadsheetId,
-//       range,
-//     });
-
-//     const rows = response.data.values;
-//     if (!rows || rows.length === 0) {
-//       return ctx.reply("📭 Нет данных для экспорта.", {
-//         reply_markup: new InlineKeyboard().text("🔙 Назад", "back_to_admin"),
-//       });
-//     }
-
-//     const csv = parse(rows, { header: false });
-//     fs.writeFileSync("users.csv", csv);
-
-//     await ctx.replyWithDocument({
-//       source: "users.csv",
-//       filename: "users.csv",
-//     });
-
-//     fs.unlinkSync("users.csv");
-
-//     await ctx.reply("✅ Данные успешно экспортированы.", {
-//       reply_markup: new InlineKeyboard().text("🔙 Назад", "back_to_admin"),
-//     });
-//   } catch (err) {
-//     console.error("Ошибка при экспорте CSV:", err);
-//     await ctx.reply("❌ Ошибка при экспорте данных.", {
-//       reply_markup: new InlineKeyboard().text("🔙 Назад", "back_to_admin"),
-//     });
-//   }
-// });
-
 bot.callbackQuery("view_stats", async (ctx) => {
   if (ctx.from.id !== adminId) {
     return ctx.answerCallbackQuery("⛔ У вас нет прав для этого.");
@@ -181,6 +161,7 @@ bot.callbackQuery("view_stats", async (ctx) => {
 
 bot.callbackQuery(['male', 'female'], async (ctx) => {
   ctx.session.gender = ctx.callbackQuery.data
+	console.error(ctx.session.gender)
   const inlineKeyboard = new InlineKeyboard().text('Разработка', 'dev').text('Маркетинг', 'marketing').text('Продажи', 'sales')
   await ctx.reply('Род деятельности:', {
     reply_markup: inlineKeyboard
@@ -241,6 +222,7 @@ bot.callbackQuery(['30k', '30-60k', '120-180k', '180k'], async (ctx) => {
 async function saveToSheet(data) {
 	const values = [
 		[
+			data.username,
 			data.gender === 'male' ? 'Мужской' : 'Женский',
 			occupationMap[data.occupation] || data.occupation,
 			data.age,
@@ -298,24 +280,32 @@ bot.callbackQuery(["50k", "100k", "200k", "300k"], async (ctx) => {
 	ctx.session.desired_income = ctx.callbackQuery.data;
 
   await saveToSheet({
-    gender: ctx.session.gender === 'male' ? 'Мужской' : 'Женский',
-    occupation: ctx.session.occupation,
-    age: ctx.session.age,
-    experience: ctx.session.experience,
-    current_income: ctx.session.current_income,
-    desired_income: ctx.session.desired_income,
-  })
+		username: `@${ctx.from.username}`,
+		gender: ctx.session.gender === 'male' ? 'Мужской' : 'Женский',
+		occupation: ctx.session.occupation,
+		age: ctx.session.age,
+		experience: ctx.session.experience,
+		current_income: ctx.session.current_income,
+		desired_income: ctx.session.desired_income,
+	})
 
 	await ctx.reply(
 		`📋 *Твоя анкета заполнена:*\n
-👤 Пол: ${ctx.session.gender === "male" ? "Мужской" : "Женский"}
-💼 Род деятельности: ${ctx.session.occupation}
+✨ username: ${ctx.from.username}		
+👤 Пол: ${ctx.session.gender === 'male' ? 'Мужской' : 'Женский'}
+💼 Род деятельности: ${
+			occupationMap[ctx.session.occupation] || ctx.session.occupation
+		}
 🎂 Возраст: ${ctx.session.age}
-📅 Опыт: ${ctx.session.experience}
-💰 Текущий доход: ${ctx.session.current_income}
-💸 Желаемый доход: ${ctx.session.desired_income}`,
-		{ parse_mode: "Markdown" }
-	);
+📅 Опыт: ${experienceMap[ctx.session.experience] || ctx.session.occupation}
+💰 Текущий доход: ${
+			occupationMap[ctx.session.current_income] || ctx.session.current_income
+		}
+💸 Желаемый доход: ${
+			occupationMap[ctx.session.desired_income] || ctx.session.desired_income
+		}`,
+		{ parse_mode: 'Markdown' }
+	)
 
 	await ctx.reply("✅ Спасибо! Теперь ты можешь получить обучение.", {
 		reply_markup: new InlineKeyboard().text("📚 Получить урок", "lesson"),
